@@ -20,12 +20,30 @@ jobs:
           channel: 'stable'
       - name: Install dependencies
         run: flutter pub get
-      - name: Recreate Android & Set Kotlin Version
+      - name: Recreate Android & Force Kotlin Version
         run: |
           rm -rf android
           flutter create . --platforms=android --project-name=jarvis_pro --org=com.topg.jarvis
-          # Update Kotlin version in build.gradle
-          sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = '\''1.9.22'\''/g' android/build.gradle || true
+          # Directly write the kotlin version block into android/build.gradle
+          echo "buildscript { ext.kotlin_version = '1.9.22' }" > android/build.gradle
+          cat << 'EOF' >> android/build.gradle
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.buildDir = '../build'
+          subprojects {
+              project.buildDir = "${rootProject.buildDir}/${project.name}"
+          }
+          subprojects {
+              project.evaluationDependsOn(':app')
+          }
+          tasks.register("clean", Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
       - name: Build Release APK
         run: flutter build apk --release --no-pub
       - name: Upload Ready-to-Install APK
