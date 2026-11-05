@@ -20,12 +20,10 @@ jobs:
           channel: 'stable'
       - name: Install dependencies
         run: flutter pub get
-      - name: Fix Kotlin Version in Project
+      - name: Purge Old Android & Generate Modern V2 Structure
         run: |
-          # Agar android/build.gradle file hai, toh usme kotlin version update kar do
-          if [ -f "android/build.gradle" ]; then
-            sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/g" android/build.gradle || true
-          fi
+          rm -rf android
+          flutter create . --platforms=android --project-name=jarvis_pro --org=com.topg.jarvis
       - name: Build Release APK
         run: flutter build apk --release --no-pub
       - name: Upload Ready-to-Install APK
