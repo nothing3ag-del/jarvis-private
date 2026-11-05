@@ -20,8 +20,10 @@ jobs:
           channel: 'stable'
       - name: Install dependencies
         run: flutter pub get
-      - name: Build Release APK
-        run: flutter build apk --release --no-pub
+      - name: Fix Android Embedding & Build
+        run: |
+          flutter create . --platforms=android --org com.topg.jarvis
+          flutter build apk --release --no-pub
       - name: Upload Ready-to-Install APK
         uses: actions/upload-artifact@v4
         with:
