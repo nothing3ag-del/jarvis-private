@@ -21,75 +21,239 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Recreate Android V2 & Force Kotlin 2.1.0 Everywhere
+      - name: Mek Nyu Jarvis Pro App Frɔm Skrach
         run: |
-          rm -rf android
-          flutter create . --platforms=android --project-name=jarvis_pro --org=com.topg.jarvis
+          flutter create --org com.topg --project-name jarvis_pro fresh_jarvis
+          cat << 'EOF' > fresh_jarvis/lib/main.dart
+          import 'dart:async';
+          import 'package:flutter/material.dart';
 
-          # 1. settings.gradle mein Kotlin 2.1.0 set karo
-          if [ -f "android/settings.gradle" ]; then
-            sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "2.1.0"/g' android/settings.gradle
-          fi
+          void main() {
+            runApp(const JarvisProApp());
+          }
 
-          # 2. Sabhi downloaded plugins (.pub-cache) ke andar bhi Kotlin 2.1.0 update karo
-          find "$HOME/.pub-cache" -name "build.gradle" -exec sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '2.1.0'/g" {} + || true
+          class JarvisProApp extends StatelessWidget {
+            const JarvisProApp({super.key});
 
-          # 3. android/build.gradle mein kotlin-stdlib 2.1.0 aur compileSdk 34 force karo
-          cat << 'EOF' > android/build.gradle
-          buildscript {
-              ext.kotlin_version = '2.1.0'
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                debugShowCheckedModeBanner: false,
+                title: 'JARVIS PRO',
+                theme: ThemeData.dark().copyWith(
+                  scaffoldBackgroundColor: const Color(0xFF050B14),
+                ),
+                home: const JarvisHudScreen(),
+              );
+            }
           }
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-              configurations.all {
-                  resolutionStrategy {
-                      force "org.jetbrains.kotlin:kotlin-stdlib:2.1.0"
-                      force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0"
-                      force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.0"
-                  }
-              }
+
+          class JarvisHudScreen extends StatefulWidget {
+            const JarvisHudScreen({super.key});
+
+            @override
+            State<JarvisHudScreen> createState() => _JarvisHudScreenState();
           }
-          rootProject.buildDir = '../build'
-          subprojects {
-              project.buildDir = "${rootProject.buildDir}/${project.name}"
-              afterEvaluate { project ->
-                  if (project.hasProperty('android')) {
-                      project.android {
-                          compileSdkVersion 34
-                          if (namespace == null) {
-                              namespace "com.topg.${project.name.replace('-', '_')}"
-                          }
-                      }
-                  }
-              }
-          }
-          subprojects {
-              project.evaluationDependsOn(':app')
-          }
-          tasks.register("clean", Delete) {
-              delete rootProject.buildDir
+
+          class _JarvisHudScreenState extends State<JarvisHudScreen>
+              with SingleTickerProviderStateMixin {
+            late AnimationController _controller;
+            bool _listening = false;
+            String _statusText = 'SISTƐM RƐDI • TAP DI KƆR FƆ TƆK';
+            final TextEditingController _inputController = TextEditingController();
+            final List> _logs = [
+              {'role': 'JARVIS', 'msg': 'Jarvis Pro v2.0 ɔnlayn. Ɔl sistɛm dɛn klin.'},
+            ];
+
+            @override
+            void initState() {
+              super.initState();
+              _controller = AnimationController(
+                vsync: this,
+                duration: const Duration(seconds: 4),
+              )..repeat(reverse: true);
+            }
+
+            @override
+            void dispose() {
+              _controller.dispose();
+              _inputController.dispose();
+              super.dispose();
+            }
+
+            void _sendCommand(String cmd) {
+              if (cmd.trim().isEmpty) return;
+              setState(() {
+                _logs.add({'role': 'YUZΑ', 'msg': cmd});
+                _statusText = 'JARVIS DE PRƆSƐS...';
+              });
+              _inputController.clear();
+
+              Timer(const Duration(milliseconds: 600), () {
+                String reply = 'Kɔmand "$cmd" dɔn rɔn witawt ɛni wahala.';
+                final lower = cmd.toLowerCase();
+                if (lower.contains('status')) {
+                  reply = 'CPU: 18% | RAM: 2.1 GB | Bɛtri: 98% | Sekyuriti: Lɔk.';
+                } else if (lower.contains('time')) {
+                  reply = 'Sistɛm taym na: ${DateTime.now().toLocal()}';
+                } else if (lower.contains('hello') || lower.contains('jarvis')) {
+                  reply = 'A de ya, Bɔs. Wetin wi de bild tide?';
+                }
+                setState(() {
+                  _logs.add({'role': 'JARVIS', 'msg': reply});
+                  _statusText = 'SISTƐM RƐDI • TAP DI KƆR FƆ TƆK';
+                });
+              });
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                appBar: AppBar(
+                  backgroundColor: const Color(0xFF0A1526),
+                  title: const Text(
+                    'J.A.R.V.I.S. PRO HUD',
+                    style: TextStyle(
+                      color: Color(0xFF00E5FF),
+                      letterSpacing: 3,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  centerTitle: true,
+                ),
+                body: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _listening = !_listening;
+                          _statusText = _listening
+                              ? 'JARVIS DE LISIN NAW...'
+                              : 'SISTƐM RƐDI • TAP DI KƆR FƆ TƆK';
+                        });
+                      },
+                      child: AnimatedBuilder(
+                        animation: _controller,
+                        builder: (context, child) {
+                          final scale = 1.0 + (_controller.value * 0.12);
+                          return Transform.scale(
+                            scale: _listening ? scale : 1.0,
+                            child: Container(
+                              width: 150,
+                              height: 150,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: _listening
+                                      ? const Color(0xFFFF3D00)
+                                      : const Color(0xFF00E5FF),
+                                  width: 4,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: (_listening
+                                            ? const Color(0xFFFF3D00)
+                                            : const Color(0xFF00E5FF))
+                                        .withOpacity(0.45),
+                                    blurRadius: 28,
+                                    spreadRadius: 6,
+                                  ),
+                                ],
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                _listening ? 'REC' : 'JARVIS',
+                                style: const TextStyle(
+                                  color: Color(0xFF00E5FF),
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _statusText,
+                      style: const TextStyle(
+                        color: Color(0xFF80DEEA),
+                        letterSpacing: 1.5,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _logs.length,
+                        itemBuilder: (context, index) {
+                          final item = _logs[index];
+                          final isJarvis = item['role'] == 'JARVIS';
+                          return Container(
+                            margin: const EdgeInsets.symmetric(vertical: 6),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isJarvis
+                                  ? const Color(0xFF0D2137)
+                                  : const Color(0xFF122C34),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isJarvis
+                                    ? const Color(0xFF00E5FF)
+                                    : const Color(0xFF26A69A),
+                              ),
+                            ),
+                            child: Text(
+                              '${item['role']}: ${item['msg']}',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _inputController,
+                              onSubmitted: _sendCommand,
+                              decoration: InputDecoration(
+                                hintText: 'Rayt kɔmand (status, time, hello)...',
+                                filled: true,
+                                fillColor: const Color(0xFF0A1526),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.send, color: Color(0xFF00E5FF)),
+                            onPressed: () => _sendCommand(_inputController.text),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
           }
           EOF
 
-          # 4. App build.gradle mein minSdk 24 aur compileSdk 34 set karo
-          if [ -f "android/app/build.gradle" ]; then
-            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/g' android/app/build.gradle
-            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/g' android/app/build.gradle
-            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 34/g' android/app/build.gradle
-            sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/g' android/app/build.gradle
-          fi
-
-      - name: Build Release APK
-        run: flutter build apk --release --no-pub --no-shrink
+      - name: Bild Nyu Release APK
+        working-directory: fresh_jarvis
+        run: flutter build apk --release
 
       - name: Upload Ready-to-Install APK
         uses: actions/upload-artifact@v4
         with:
           name: JarvisPro-Topg-Release-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: fresh_jarvis/build/app/outputs/flutter-apk/app-release.apk
