@@ -10,22 +10,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
           channel: 'stable'
+
       - name: Install dependencies
         run: flutter pub get
-      - name: Purge Old Android & Generate Modern V2 Structure
+
+      - name: Recreate Android V2 & Fix Kotlin + SDK Versions
         run: |
           rm -rf android
           flutter create . --platforms=android --project-name=jarvis_pro --org=com.topg.jarvis
+
+          # 1. Flutter 3.22 settings.gradle mein Kotlin version 1.9.22 update karo
+          if [ -f "android/settings.gradle" ]; then
+            sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "1.9.22"/g' android/settings.gradle
+          fi
+
+          # 2. Agar build.gradle mein ext.kotlin_version ho toh usko bhi 1.9.22 karo
+          if [ -f "android/build.gradle" ]; then
+            sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/g" android/build.gradle
+          fi
+
+          # 3. Plugins (Vosk, Porcupine, TFLite) ke liye minSdk 24 aur compileSdk 34 set karo
+          if [ -f "android/app/build.gradle" ]; then
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/g' android/app/build.gradle
+            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/g' android/app/build.gradle
+            sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 34/g' android/app/build.gradle
+            sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/g' android/app/build.gradle
+          fi
+
       - name: Build Release APK
         run: flutter build apk --release --no-pub
+
       - name: Upload Ready-to-Install APK
         uses: actions/upload-artifact@v4
         with:
