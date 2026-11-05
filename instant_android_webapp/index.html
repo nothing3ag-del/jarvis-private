@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#030712" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>JARVIS PRO (हिंदी + EN) - Topg Edition</title>
+  <style>
+    :root {
+      --cyan: #00f0ff;
+      --deep-bg: #030712;
+      --card-bg: rgba(5, 19, 41, 0.78);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    body {
+      background: radial-gradient(circle at 50% 35%, #062846 0%, #030b17 55%, #010409 100%);
+      color: #e0ffff;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100dvh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: monospace;
+      font-size: 12px;
+      letter-spacing: 1.4px;
+      color: var(--cyan);
+      z-index: 10;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #ff4d6d;
+      margin-right: 8px;
+    }
+    .status-dot.active {
+      background: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan);
+    }
+    .lang-pill {
+      border: 1px solid rgba(0, 240, 255, 0.45);
+      padding: 4px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+    #holoCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      pointer-events: none;
+    }
+    .center-stage {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: auto 0;
+    }
+    .chips {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      max-width: 100%;
+      padding: 8px 4px;
+      z-index: 10;
+    }
+    .chip {
+      white-space: nowrap;
+      background: rgba(6, 35, 59, 0.85);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      color: #e0ffff;
+      padding: 8px 13px;
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .console-card {
+      position: relative;
+      z-index: 10;
+      background: var(--card-bg);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 16px;
+      padding: 16px;
+      min-height: 92px;
+      backdrop-filter: blur(8px);
+    }
+    .transcript {
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      font-style: italic;
+      margin-bottom: 6px;
+    }
+    .response {
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .controls {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      padding: 12px 0 8px;
+    }
+    .mic-btn {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.08);
+      color: var(--cyan);
+      font-size: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: 0.25s;
+    }
+    .mic-btn.active {
+      border-color: var(--cyan);
+      background: rgba(0, 240, 255, 0.2);
+      box-shadow: 0 0 24px rgba(0, 240, 255, 0.55);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="holoCanvas"></canvas>
+
+  <div class="header">
+    <div><span id="statusDot" class="status-dot"></span>JARVIS PRO • TOPG ANDROID</div>
+    <div id="langToggle" class="lang-pill" onclick="toggleLang()">EN / हिंदी</div>
+  </div>
+
+  <div class="center-stage"></div>
+
+  <div>
+    <div class="chips">
+      <button class="chip" onclick="runCmd('टॉपग का फेवरेट गाना चलाओ', 'hi')">🎵 टॉपग का फेवरेट गाना</button>
+      <button class="chip" onclick="runCmd('Play Tujhe Kitna Chahne Lage on Spotify', 'en')">🎧 Play Tujhe Kitna Chahne Lage</button>
+      <button class="chip" onclick="runCmd('वॉल्यूम 50% कर दो जार्विस', 'hi')">🔊 वॉल्यूम 50% कर दो</button>
+      <button class="chip" onclick="runCmd('स्पॉटिफ़ाई में नया प्लेलिस्ट बनाओ', 'hi')">➕ नया प्लेलिस्ट बनाओ</button>
+      <button class="chip" onclick="runCmd('गाना रोक दो', 'hi')">⏸️ गाना रोक दो</button>
+    </div>
+
+    <div class="console-card">
+      <div id="transcriptText" class="transcript">> Say "Hey Jarvis" or tap a command...</div>
+      <div id="responseText" class="response">Hello, Topg! How can I assist you today?<br>नमस्ते टॉपग! मैं आपकी कैसे मदद कर सकता हूँ?</div>
+    </div>
+
+    <div class="controls">
+      <button id="micBtn" class="mic-btn" onclick="toggleMic()">🎙️</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('holoCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    let time = 0;
+    let speakingAmp = 0;
+    let mood = 'idle'; // idle, smile, nod, shrug
+    let currentLang = 'hi';
+    let micActive = false;
+    let particles = [];
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function spawnParticles() {
+      const cx = width / 2, cy = height * 0.38;
+      for (let i = 0; i < 65; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1.5 + Math.random() * 4.5;
+        particles.push({
+          x: cx, y: cy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          alpha: 1,
+          r: 2 + Math.random() * 3
+        });
+      }
+    }
+
+    function render() {
+      time += 0.035;
+      ctx.clearRect(0, 0, width, height);
+
+      const cx = width / 2;
+      const cy = height * 0.38;
+      const color = mood === 'shrug' ? '#ff4d6d' : '#00f0ff';
+
+      // Outer Holographic Rings
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 105 + Math.sin(time * 2) * 5 + speakingAmp * 18, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = 'rgba(0, 240, 255, 0.3)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 128 + Math.cos(time * 1.5) * 6, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 3D Wireframe Jarvis Head Nod/Shrug offset
+      const nodOffset = mood === 'nod' ? Math.sin(time * 8) * 10 : 0;
+      const headY = cy + nodOffset;
+
+      // Eyes
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(cx - 34, headY - 14, 15, Math.PI, 0);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx + 34, headY - 14, 15, Math.PI, 0);
+      ctx.stroke();
+
+      // Lip-Sync Mouth
+      const mouthH = 4 + speakingAmp * 28;
+      ctx.beginPath();
+      ctx.ellipse(cx, headY + 36, 28, mouthH, 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Waveform Visualizer
+      const bars = 26;
+      const barW = 240 / bars;
+      for (let i = 0; i < bars; i++) {
+        const h = 6 + Math.abs(Math.sin(time * 4 + i * 0.45)) * (12 + speakingAmp * 42);
+        const x = cx - 120 + i * barW;
+        ctx.beginPath();
+        ctx.moveTo(x, cy + 150 - h / 2);
+        ctx.lineTo(x, cy + 150 + h / 2);
+        ctx.stroke();
+      }
+
+      // Particle Burst
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.022;
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+        ctx.fillStyle = `rgba(0, 240, 255, ${p.alpha})`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      requestAnimationFrame(render);
+    }
+    render();
+
+    function speakText(text, lang) {
+      document.getElementById('responseText').innerText = text;
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = lang === 'hi' ? 'hi-IN' : 'en-IN';
+        u.onstart = () => {
+          window._ampInterval = setInterval(() => {
+            speakingAmp = 0.25 + Math.random() * 0.65;
+          }, 70);
+        };
+        u.onend = () => {
+          clearInterval(window._ampInterval);
+          speakingAmp = 0;
+          mood = 'idle';
+        };
+        window.speechSynthesis.speak(u);
+      }
+    }
+
+    function runCmd(cmd, lang) {
+      document.getElementById('transcriptText').innerText = `> "${cmd}"`;
+      const lower = cmd.toLowerCase();
+      mood = 'nod';
+      spawnParticles();
+
+      if (lower.includes('फेवरेट') || lower.includes('favorite') || lower.includes('tujhe kitna')) {
+        const reply = lang === 'hi'
+          ? 'हाँ टॉपग, आपका फेवरेट गाना "Tujhe Kitna Chahne Lage" चला रहा हूँ!'
+          : 'Done, Topg! Playing "Tujhe Kitna Chahne Lage" on Spotify!';
+        speakText(reply, lang);
+        setTimeout(() => {
+          window.location.href = 'intent://search/Tujhe%20Kitna%20Chahne%20Lage#Intent;scheme=spotify;package=com.spotify.music;end';
+        }, 1200);
+      } else if (lower.includes('वॉल्यूम') || lower.includes('volume')) {
+        const reply = lang === 'hi'
+          ? 'हाँ टॉपग, वॉल्यूम 50% कर दिया गया है!'
+          : 'Done, Topg! Volume set to 50%.';
+        speakText(reply, lang);
+      } else if (lower.includes('प्लेलिस्ट') || lower.includes('playlist')) {
+        const reply = lang === 'hi'
+          ? 'हाँ टॉपग, स्पॉटिफ़ाई में नया प्लेलिस्ट बना दिया है!'
+          : 'Done, Topg! Created a new playlist on Spotify.';
+        speakText(reply, lang);
+      } else if (lower.includes('रोक दो') || lower.includes('stop')) {
+        const reply = lang === 'hi'
+          ? 'हाँ टॉपग, गाना रोक दिया है!'
+          : 'Done, Topg! Music paused.';
+        speakText(reply, lang);
+      } else {
+        mood = 'shrug';
+        speakText(lang === 'hi' ? 'माफ़ करना टॉपग, फिर से बोलिए।' : 'Sorry Topg, say that again.', lang);
+      }
+    }
+
+    function toggleLang() {
+      currentLang = currentLang === 'hi' ? 'en' : 'hi';
+      document.getElementById('langToggle').innerText = currentLang === 'hi' ? 'हिंदी (ACTIVE)' : 'ENGLISH (ACTIVE)';
+    }
+
+    function toggleMic() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const btn = document.getElementById('micBtn');
+      const dot = document.getElementById('statusDot');
+      if (!SR) {
+        speakText('Voice recognition ready via chips or Chrome Android, Topg!', 'en');
+        return;
+      }
+      const rec = new SR();
+      rec.lang = currentLang === 'hi' ? 'hi-IN' : 'en-IN';
+      btn.classList.add('active');
+      dot.classList.add('active');
+      rec.onresult = (e) => {
+        const text = e.results[0][0].transcript;
+        runCmd(text, currentLang);
+      };
+      rec.onend = () => {
+        btn.classList.remove('active');
+        dot.classList.remove('active');
+      };
+      rec.start();
+    }
+  </script>
+</body>
+</html>

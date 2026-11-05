@@ -1,0 +1,30 @@
+name: jarvis_pro
+description: Fully offline bilingual (Hindi + English) AI assistant for Topg.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.5.1
+  rive: ^0.13.4
+  porcupine_flutter: ^3.0.2
+  tflite_flutter: ^0.10.4
+  vosk_flutter: ^0.3.48
+  flutter_tts: ^4.0.2
+  sqflite_sqlcipher: ^2.2.1
+  flutter_secure_storage: ^9.0.0
+  path_provider: ^2.1.3
+  permission_handler: ^11.3.1
+  sensors_plus: ^5.0.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/models/
+    - assets/rive/
+  shaders:
+    - shaders/hologram.frag
