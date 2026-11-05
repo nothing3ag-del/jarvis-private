@@ -21,11 +21,12 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
 
-      - name: Mek Nyu Jarvis Pro App Frɔm Skrach
+      - name: Create Clean Jarvis Pro App
         run: |
           flutter create --org com.topg --project-name jarvis_pro fresh_jarvis
-          cat << 'EOF' > fresh_jarvis/lib/main.dart
-          import 'dart:async';
+
+          python3 - << 'PYEOF'
+          dart_code = '''import 'dart:async';
           import 'package:flutter/material.dart';
 
           void main() {
@@ -59,10 +60,10 @@ jobs:
               with SingleTickerProviderStateMixin {
             late AnimationController _controller;
             bool _listening = false;
-            String _statusText = 'SISTƐM RƐDI • TAP DI KƆR FƆ TƆK';
+            String _statusText = 'SYSTEM ONLINE • TAP CORE TO SPEAK';
             final TextEditingController _inputController = TextEditingController();
             final List> _logs = [
-              {'role': 'JARVIS', 'msg': 'Jarvis Pro v2.0 ɔnlayn. Ɔl sistɛm dɛn klin.'},
+              {'role': 'JARVIS', 'msg': 'Jarvis Pro v2.0 online. All systems operational.'},
             ];
 
             @override
@@ -70,7 +71,7 @@ jobs:
               super.initState();
               _controller = AnimationController(
                 vsync: this,
-                duration: const Duration(seconds: 4),
+                duration: const Duration(seconds: 3),
               )..repeat(reverse: true);
             }
 
@@ -82,27 +83,30 @@ jobs:
             }
 
             void _sendCommand(String cmd) {
-              if (cmd.trim().isEmpty) return;
+              final cleanCmd = cmd.trim();
+              if (cleanCmd.isEmpty) return;
               setState(() {
-                _logs.add({'role': 'YUZΑ', 'msg': cmd});
-                _statusText = 'JARVIS DE PRƆSƐS...';
+                _logs.add({'role': 'USER', 'msg': cleanCmd});
+                _statusText = 'PROCESSING COMMAND...';
               });
               _inputController.clear();
 
-              Timer(const Duration(milliseconds: 600), () {
-                String reply = 'Kɔmand "$cmd" dɔn rɔn witawt ɛni wahala.';
-                final lower = cmd.toLowerCase();
+              Timer(const Duration(milliseconds: 500), () {
+                String reply = 'Executed command: ' + cleanCmd;
+                final lower = cleanCmd.toLowerCase();
                 if (lower.contains('status')) {
-                  reply = 'CPU: 18% | RAM: 2.1 GB | Bɛtri: 98% | Sekyuriti: Lɔk.';
+                  reply = 'CPU: 14% | RAM: 1.8 GB | Battery: 98% | Neural Engine: Ready.';
                 } else if (lower.contains('time')) {
-                  reply = 'Sistɛm taym na: ${DateTime.now().toLocal()}';
+                  reply = 'Current system time: ' + DateTime.now().toString();
                 } else if (lower.contains('hello') || lower.contains('jarvis')) {
-                  reply = 'A de ya, Bɔs. Wetin wi de bild tide?';
+                  reply = 'At your service, Boss. All systems are green.';
                 }
-                setState(() {
-                  _logs.add({'role': 'JARVIS', 'msg': reply});
-                  _statusText = 'SISTƐM RƐDI • TAP DI KƆR FƆ TƆK';
-                });
+                if (mounted) {
+                  setState(() {
+                    _logs.add({'role': 'JARVIS', 'msg': reply});
+                    _statusText = 'SYSTEM ONLINE • TAP CORE TO SPEAK';
+                  });
+                }
               });
             }
 
@@ -129,8 +133,8 @@ jobs:
                         setState(() {
                           _listening = !_listening;
                           _statusText = _listening
-                              ? 'JARVIS DE LISIN NAW...'
-                              : 'SISTƐM RƐDI • TAP DI KƆR FƆ TƆK';
+                              ? 'LISTENING FOR VOICE INPUT...'
+                              : 'SYSTEM ONLINE • TAP CORE TO SPEAK';
                         });
                       },
                       child: AnimatedBuilder(
@@ -163,7 +167,7 @@ jobs:
                               ),
                               alignment: Alignment.center,
                               child: Text(
-                                _listening ? 'REC' : 'JARVIS',
+                                _listening ? 'ACTIVE' : 'JARVIS',
                                 style: const TextStyle(
                                   color: Color(0xFF00E5FF),
                                   fontSize: 22,
@@ -193,6 +197,8 @@ jobs:
                         itemBuilder: (context, index) {
                           final item = _logs[index];
                           final isJarvis = item['role'] == 'JARVIS';
+                          final roleText = item['role'] ?? 'SYS';
+                          final msgText = item['msg'] ?? '';
                           return Container(
                             margin: const EdgeInsets.symmetric(vertical: 6),
                             padding: const EdgeInsets.all(12),
@@ -208,7 +214,7 @@ jobs:
                               ),
                             ),
                             child: Text(
-                              '${item['role']}: ${item['msg']}',
+                              roleText + ': ' + msgText,
                               style: const TextStyle(color: Colors.white),
                             ),
                           );
@@ -224,7 +230,7 @@ jobs:
                               controller: _inputController,
                               onSubmitted: _sendCommand,
                               decoration: InputDecoration(
-                                hintText: 'Rayt kɔmand (status, time, hello)...',
+                                hintText: 'Enter command (status, time, hello)...',
                                 filled: true,
                                 fillColor: const Color(0xFF0A1526),
                                 border: OutlineInputBorder(
@@ -246,9 +252,13 @@ jobs:
               );
             }
           }
-          EOF
+          '''
+          import textwrap
+          with open("fresh_jarvis/lib/main.dart", "w") as f:
+              f.write(textwrap.dedent(dart_code))
+          PYEOF
 
-      - name: Bild Nyu Release APK
+      - name: Build Release APK
         working-directory: fresh_jarvis
         run: flutter build apk --release
 
