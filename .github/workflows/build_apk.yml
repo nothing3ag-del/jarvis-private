@@ -24,22 +24,60 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Recreate Android V2 & Fix Kotlin + SDK Versions
+      - name: Recreate Android V2 & Force Kotlin 2.1.0 Everywhere
         run: |
           rm -rf android
           flutter create . --platforms=android --project-name=jarvis_pro --org=com.topg.jarvis
 
-          # 1. Flutter 3.22 settings.gradle mein Kotlin version 1.9.22 update karo
+          # 1. settings.gradle mein Kotlin 2.1.0 set karo
           if [ -f "android/settings.gradle" ]; then
-            sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "1.9.22"/g' android/settings.gradle
+            sed -i 's/id "org.jetbrains.kotlin.android" version "[^"]*"/id "org.jetbrains.kotlin.android" version "2.1.0"/g' android/settings.gradle
           fi
 
-          # 2. Agar build.gradle mein ext.kotlin_version ho toh usko bhi 1.9.22 karo
-          if [ -f "android/build.gradle" ]; then
-            sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.22'/g" android/build.gradle
-          fi
+          # 2. Sabhi downloaded plugins (.pub-cache) ke andar bhi Kotlin 2.1.0 update karo
+          find "$HOME/.pub-cache" -name "build.gradle" -exec sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '2.1.0'/g" {} + || true
 
-          # 3. Plugins (Vosk, Porcupine, TFLite) ke liye minSdk 24 aur compileSdk 34 set karo
+          # 3. android/build.gradle mein kotlin-stdlib 2.1.0 aur compileSdk 34 force karo
+          cat << 'EOF' > android/build.gradle
+          buildscript {
+              ext.kotlin_version = '2.1.0'
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              configurations.all {
+                  resolutionStrategy {
+                      force "org.jetbrains.kotlin:kotlin-stdlib:2.1.0"
+                      force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0"
+                      force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.0"
+                  }
+              }
+          }
+          rootProject.buildDir = '../build'
+          subprojects {
+              project.buildDir = "${rootProject.buildDir}/${project.name}"
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 34
+                          if (namespace == null) {
+                              namespace "com.topg.${project.name.replace('-', '_')}"
+                          }
+                      }
+                  }
+              }
+          }
+          subprojects {
+              project.evaluationDependsOn(':app')
+          }
+          tasks.register("clean", Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
+
+          # 4. App build.gradle mein minSdk 24 aur compileSdk 34 set karo
           if [ -f "android/app/build.gradle" ]; then
             sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 24/g' android/app/build.gradle
             sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 24/g' android/app/build.gradle
@@ -48,7 +86,7 @@ jobs:
           fi
 
       - name: Build Release APK
-        run: flutter build apk --release --no-pub
+        run: flutter build apk --release --no-pub --no-shrink
 
       - name: Upload Ready-to-Install APK
         uses: actions/upload-artifact@v4
