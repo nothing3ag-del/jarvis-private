@@ -20,11 +20,14 @@ jobs:
           channel: 'stable'
       - name: Install dependencies
         run: flutter pub get
-      - name: Clean & Rebuild Android Structure
+      - name: Recreate Android & Set Kotlin Version
         run: |
           rm -rf android
           flutter create . --platforms=android --project-name=jarvis_pro --org=com.topg.jarvis
-          flutter build apk --release --no-pub
+          # Update Kotlin version in build.gradle
+          sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = '\''1.9.22'\''/g' android/build.gradle || true
+      - name: Build Release APK
+        run: flutter build apk --release --no-pub
       - name: Upload Ready-to-Install APK
         uses: actions/upload-artifact@v4
         with:
